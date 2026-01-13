@@ -1,0 +1,921 @@
+openapi: 3.0.3
+info:
+  title: iyzico Payment API
+  description: |
+    The iyzico Payment API allows you to integrate payment processing capabilities into your applications.
+    
+    ## Authentication
+    All API requests require authentication using API keys. Include your API key in the Authorization header.
+    
+    ## Base URL
+    - **Production**: `https://api.iyzico.com/v2/`
+    - **Sandbox**: `https://sandbox-api.iyzico.com/v2/`
+    
+    ## Rate Limits
+    - Standard: 1000 requests per minute per API key
+    - Burst: Up to 100 requests per second
+    
+  version: 2.0.0
+  contact:
+    name: iyzico API Support
+    email: api@iyzico.com
+    url: https://www.iyzico.com
+  license:
+    name: Proprietary
+    url: https://www.iyzico.com/terms
+
+servers:
+  - url: https://api.iyzico.com/v2
+    description: Production server
+  - url: https://sandbox-api.iyzico.com/v2
+    description: Sandbox server (for testing)
+
+tags:
+  - name: Authentication
+    description: Authentication and authorization endpoints
+  - name: Payments
+    description: Payment processing endpoints
+  - name: Refunds
+    description: Refund and cancellation endpoints
+  - name: 3D Secure
+    description: 3D Secure authentication endpoints
+  - name: BIN Check
+    description: Bank Identification Number and installment checking
+  - name: Webhooks
+    description: Webhook configuration and management
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: test
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  
+  schemas:
+    Error:
+      type: object
+      required:
+        - status
+        - errorCode
+        - errorMessage
+        - errorGroup
+      properties:
+        status:
+          type: string
+          example: failure
+        errorCode:
+          type: string
+          example: "5001"
+        errorMessage:
+          type: string
+          example: Invalid API key
+        errorGroup:
+          type: string
+          enum: [AUTHENTICATION, VALIDATION, PAYMENT, SYSTEM, BUSINESS]
+          example: AUTHENTICATION
+    
+    PaymentCard:
+      type: object
+      required:
+        - cardHolderName
+        - cardNumber
+        - expireMonth
+        - expireYear
+        - cvc
+      properties:
+        cardHolderName:
+          type: string
+          example: John Doe
+        cardNumber:
+          type: string
+          pattern: '^\d{13,19}$'
+          example: "5528790000000008"
+        expireMonth:
+          type: string
+          pattern: '^(0[1-9]|1[0-2])$'
+          example: "12"
+        expireYear:
+          type: string
+          pattern: '^\d{4}$'
+          example: "2030"
+        cvc:
+          type: string
+          pattern: '^\d{3,4}$'
+          example: "123"
+        registerCard:
+          type: integer
+          enum: [0, 1]
+          default: 0
+          description: Register card for future use (0 = no, 1 = yes)
+    
+    Buyer:
+      type: object
+      required:
+        - id
+        - name
+        - surname
+        - email
+      properties:
+        id:
+          type: string
+          example: BY789
+        name:
+          type: string
+          example: John
+        surname:
+          type: string
+          example: Doe
+        email:
+          type: string
+          format: email
+          example: email@email.com
+        identityNumber:
+          type: string
+          example: "74300864791"
+        registrationAddress:
+          type: string
+          example: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+        city:
+          type: string
+          example: Istanbul
+        country:
+          type: string
+          example: Turkey
+        ip:
+          type: string
+          format: ipv4
+          example: "85.34.78.112"
+        zipCode:
+          type: string
+          example: "34732"
+    
+    BillingAddress:
+      type: object
+      required:
+        - contactName
+        - city
+        - country
+        - address
+      properties:
+        contactName:
+          type: string
+          example: John Doe
+        city:
+          type: string
+          example: Istanbul
+        country:
+          type: string
+          example: Turkey
+        address:
+          type: string
+          example: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+        zipCode:
+          type: string
+          example: "34732"
+    
+    ShippingAddress:
+      type: object
+      properties:
+        contactName:
+          type: string
+          example: John Doe
+        city:
+          type: string
+          example: Istanbul
+        country:
+          type: string
+          example: Turkey
+        address:
+          type: string
+          example: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+        zipCode:
+          type: string
+          example: "34732"
+    
+    BasketItem:
+      type: object
+      required:
+        - id
+        - name
+        - category1
+        - itemType
+        - price
+      properties:
+        id:
+          type: string
+          example: BI101
+        name:
+          type: string
+          example: Binocular
+        category1:
+          type: string
+          example: Collectibles
+        category2:
+          type: string
+          example: Accessories
+        itemType:
+          type: string
+          enum: [PHYSICAL, VIRTUAL]
+          example: PHYSICAL
+        price:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "100.00"
+    
+    PaymentRequest:
+      type: object
+      required:
+        - price
+        - paidPrice
+        - installment
+        - paymentChannel
+        - basketId
+        - paymentCard
+        - buyer
+        - basketItems
+      properties:
+        price:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "100.00"
+          description: Original price
+        paidPrice:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "100.00"
+          description: Price after discounts/fees
+        installment:
+          type: integer
+          minimum: 1
+          maximum: 12
+          example: 1
+          description: Number of installments
+        paymentChannel:
+          type: string
+          enum: [WEB, MOBILE, API]
+          example: WEB
+        basketId:
+          type: string
+          example: B67832
+        paymentCard:
+          $ref: '#/components/schemas/PaymentCard'
+        buyer:
+          $ref: '#/components/schemas/Buyer'
+        billingAddress:
+          $ref: '#/components/schemas/BillingAddress'
+        shippingAddress:
+          $ref: '#/components/schemas/ShippingAddress'
+        basketItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/BasketItem'
+        currency:
+          type: string
+          default: TRY
+          example: TRY
+        locale:
+          type: string
+          default: tr
+          enum: [tr, en]
+          example: tr
+        conversationId:
+          type: string
+          example: "123456789"
+          description: Merchant conversation ID
+        callbackUrl:
+          type: string
+          format: uri
+          example: "https://www.merchant.com/callback"
+          description: Callback URL for 3DS payments
+    
+    PaymentResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failure]
+          example: success
+        paymentId:
+          type: string
+          example: "12345678"
+        paymentStatus:
+          type: string
+          enum: [SUCCESS, FAILURE, INIT_THREEDS, CALLBACK_THREEDS]
+          example: SUCCESS
+        fraudStatus:
+          type: integer
+          enum: [-1, 0, 1]
+          description: "-1 = Review, 0 = Rejected, 1 = Approved"
+          example: 1
+        price:
+          type: number
+          format: float
+          example: 100.00
+        paidPrice:
+          type: number
+          format: float
+          example: 100.00
+        currency:
+          type: string
+          example: TRY
+        installment:
+          type: integer
+          example: 1
+        conversationId:
+          type: string
+          example: "123456789"
+        cardUserKey:
+          type: string
+          example: "card_user_key_123"
+        cardToken:
+          type: string
+          example: "card_token_123"
+        htmlContent:
+          type: string
+          description: HTML content for 3DS iframe (for 3DS payments)
+        redirectUrl:
+          type: string
+          format: uri
+          description: Redirect URL for 3DS authentication
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+        errorGroup:
+          type: string
+    
+    RefundRequest:
+      type: object
+      properties:
+        price:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "50.00"
+          description: Partial refund amount (optional, defaults to full refund)
+        ip:
+          type: string
+          format: ipv4
+          example: "85.34.78.112"
+        reason:
+          type: string
+          example: "Customer request"
+          description: Reason for refund
+    
+    RefundResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failure]
+          example: success
+        paymentId:
+          type: string
+          example: "12345678"
+        refundStatus:
+          type: string
+          enum: [SUCCESS, FAILURE]
+          example: SUCCESS
+        price:
+          type: number
+          format: float
+          example: 100.00
+        refundedPrice:
+          type: number
+          format: float
+          example: 100.00
+        currency:
+          type: string
+          example: TRY
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+    
+    BINCheckRequest:
+      type: object
+      required:
+        - binNumber
+      properties:
+        binNumber:
+          type: string
+          pattern: '^\d{6,8}$'
+          example: "552879"
+          description: First 6-8 digits of card number
+    
+    BINCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failure]
+          example: success
+        binNumber:
+          type: string
+          example: "552879"
+        cardType:
+          type: string
+          enum: [CREDIT_CARD, DEBIT_CARD]
+          example: CREDIT_CARD
+        cardAssociation:
+          type: string
+          enum: [VISA, MASTER_CARD, AMEX, TROY]
+          example: MASTER_CARD
+        cardFamily:
+          type: string
+          example: Bonus
+        bankName:
+          type: string
+          example: Garanti BBVA
+        bankCode:
+          type: integer
+          example: 62
+        commercial:
+          type: integer
+          enum: [0, 1]
+          example: 0
+        installments:
+          type: array
+          items:
+            type: object
+            properties:
+              installmentNumber:
+                type: integer
+                example: 1
+              price:
+                type: number
+                format: float
+                example: 100.00
+              totalPrice:
+                type: number
+                format: float
+                example: 100.00
+    
+    InstallmentCheckRequest:
+      type: object
+      required:
+        - binNumber
+        - price
+      properties:
+        binNumber:
+          type: string
+          pattern: '^\d{6,8}$'
+          example: "552879"
+        price:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "100.00"
+        currency:
+          type: string
+          default: TRY
+          example: TRY
+    
+    InstallmentCheckResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failure]
+          example: success
+        installmentDetails:
+          type: array
+          items:
+            type: object
+            properties:
+              binNumber:
+                type: string
+                example: "552879"
+              price:
+                type: string
+                example: "100.00"
+              currency:
+                type: string
+                example: TRY
+              installmentPrices:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    installmentNumber:
+                      type: integer
+                      example: 1
+                    price:
+                      type: string
+                      example: "100.00"
+                    totalPrice:
+                      type: string
+                      example: "100.00"
+
+paths:
+  /payments:
+    post:
+      tags:
+        - Payments
+      summary: Create a payment (Non-3DS)
+      description: |
+        Process a payment without 3D Secure authentication.
+        
+        This endpoint is suitable for:
+        - Low-value transactions
+        - Merchant-initiated transactions
+        - Recurring payments
+        
+        **Note**: Some card issuers may still require 3DS authentication.
+      operationId: createPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+            examples:
+              basic:
+                summary: Basic payment
+                value:
+                  price: "100.00"
+                  paidPrice: "100.00"
+                  installment: 1
+                  paymentChannel: WEB
+                  basketId: B67832
+                  paymentCard:
+                    cardHolderName: John Doe
+                    cardNumber: "5528790000000008"
+                    expireMonth: "12"
+                    expireYear: "2030"
+                    cvc: "123"
+                    registerCard: 0
+                  buyer:
+                    id: BY789
+                    name: John
+                    surname: Doe
+                    email: email@email.com
+                    identityNumber: "74300864791"
+                    registrationAddress: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+                    city: Istanbul
+                    country: Turkey
+                    ip: "85.34.78.112"
+                  billingAddress:
+                    contactName: John Doe
+                    city: Istanbul
+                    country: Turkey
+                    address: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+                  basketItems:
+                    - id: BI101
+                      name: Binocular
+                      category1: Collectibles
+                      category2: Accessories
+                      itemType: PHYSICAL
+                      price: "100.00"
+                  currency: TRY
+                  locale: tr
+      responses:
+        '200':
+          description: Payment processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              example:
+                status: success
+                paymentId: "12345678"
+                paymentStatus: SUCCESS
+                fraudStatus: 1
+                price: 100.00
+                paidPrice: 100.00
+                currency: TRY
+                installment: 1
+        '400':
+          description: Bad request - Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests - Rate limit exceeded
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /payments/auth:
+    post:
+      tags:
+        - Payments
+      summary: Authorize a payment
+      description: |
+        Authorize (pre-authorize) a payment without capturing the funds immediately.
+        
+        This is useful for:
+        - Pre-authorizing payments
+        - Shipping goods before charging
+        - Verifying card validity
+        
+        **Note**: Authorizations typically expire after 7 days.
+      operationId: authorizePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200':
+          description: Payment authorized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              example:
+                status: success
+                paymentId: "12345678"
+                paymentStatus: AUTHORIZED
+                fraudStatus: 1
+                price: 100.00
+                paidPrice: 100.00
+  
+  /payments/{paymentId}/capture:
+    post:
+      tags:
+        - Payments
+      summary: Capture an authorized payment
+      description: Capture (charge) a previously authorized payment.
+      operationId: capturePayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "12345678"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ip:
+                  type: string
+                  format: ipv4
+                  example: "85.34.78.112"
+      responses:
+        '200':
+          description: Payment captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              example:
+                status: success
+                paymentId: "12345678"
+                paymentStatus: SUCCESS
+                price: 100.00
+                paidPrice: 100.00
+        '404':
+          description: Payment not found
+        '400':
+          description: Bad request - Payment cannot be captured
+  
+  /payments/3ds-initialize:
+    post:
+      tags:
+        - 3D Secure
+      summary: Initialize 3D Secure payment
+      description: |
+        Initialize a payment with 3D Secure authentication.
+        
+        This endpoint returns an HTML iframe or redirect URL for 3DS authentication.
+        
+        After customer completes 3DS authentication, use `/payments/3ds-complete` to finalize the payment.
+      operationId: initialize3DSPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PaymentRequest'
+      responses:
+        '200':
+          description: 3DS payment initialized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+              example:
+                status: success
+                paymentId: "12345678"
+                paymentStatus: INIT_THREEDS
+                htmlContent: "<iframe src='https://3dsecure.iyzico.com/3dsecure/...'></iframe>"
+                redirectUrl: "https://3dsecure.iyzico.com/3dsecure/payment/12345678"
+  
+  /payments/3ds-complete:
+    post:
+      tags:
+        - 3D Secure
+      summary: Complete 3D Secure payment
+      description: |
+        Complete a 3D Secure payment after customer authentication.
+        
+        Call this endpoint after receiving the callback from the 3DS provider.
+      operationId: complete3DSPayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - paymentId
+              properties:
+                paymentId:
+                  type: string
+                  example: "12345678"
+      responses:
+        '200':
+          description: 3DS payment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+  
+  /payments/{paymentId}/cancel:
+    post:
+      tags:
+        - Refunds
+      summary: Cancel an authorized payment
+      description: Cancel an authorized payment before it is captured.
+      operationId: cancelPayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "12345678"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ip:
+                  type: string
+                  format: ipv4
+                  example: "85.34.78.112"
+      responses:
+        '200':
+          description: Payment cancelled successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+  
+  /payments/{paymentId}/refund:
+    post:
+      tags:
+        - Refunds
+      summary: Refund a payment
+      description: |
+        Refund a captured payment (full or partial).
+        
+        If `price` is not provided, a full refund will be processed.
+      operationId: refundPayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "12345678"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefundRequest'
+      responses:
+        '200':
+          description: Refund processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefundResponse'
+  
+  /payments/{paymentId}/reversal:
+    post:
+      tags:
+        - Refunds
+      summary: Reverse a payment
+      description: Reverse a payment (typically used for fraud or errors).
+      operationId: reversePayment
+      parameters:
+        - name: paymentId
+          in: path
+          required: true
+          schema:
+            type: string
+          example: "12345678"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ip:
+                  type: string
+                  format: ipv4
+                  example: "85.34.78.112"
+      responses:
+        '200':
+          description: Payment reversed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaymentResponse'
+  
+  /bins/check:
+    post:
+      tags:
+        - BIN Check
+      summary: Check BIN (Bank Identification Number)
+      description: |
+        Check card BIN to get card information and available installment options.
+        
+        Requires the first 6-8 digits of the card number.
+      operationId: checkBIN
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BINCheckRequest'
+            example:
+              binNumber: "552879"
+      responses:
+        '200':
+          description: BIN information retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BINCheckResponse'
+              example:
+                status: success
+                binNumber: "552879"
+                cardType: CREDIT_CARD
+                cardAssociation: MASTER_CARD
+                cardFamily: Bonus
+                bankName: Garanti BBVA
+                bankCode: 62
+                commercial: 0
+                installments:
+                  - installmentNumber: 1
+                    price: 100.00
+                    totalPrice: 100.00
+                  - installmentNumber: 2
+                    price: 51.50
+                    totalPrice: 103.00
+                  - installmentNumber: 3
+                    price: 34.67
+                    totalPrice: 104.00
+  
+  /installments:
+    post:
+      tags:
+        - BIN Check
+      summary: Check installment options
+      description: Check available installment options for a specific amount and BIN.
+      operationId: checkInstallments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstallmentCheckRequest'
+            example:
+              binNumber: "552879"
+              price: "100.00"
+              currency: TRY
+      responses:
+        '200':
+          description: Installment options retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstallmentCheckResponse'
