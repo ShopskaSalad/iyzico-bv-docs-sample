@@ -1,0 +1,511 @@
+openapi: 3.0.3
+info:
+  title: iyzico Payment API - beta1.1
+  description: |
+    The iyzico Payment API version beta1.1 allows you to integrate payment processing capabilities into your applications.
+    
+    ## Version Information
+    This is the beta1.1 version of the API with enhanced features and new endpoints.
+    
+    ## What's New in beta1.1
+    - New v1 endpoints for payment processing
+    - Enhanced authentication flow
+    - Improved authorization mechanisms
+    - Frictionless and challenge flow support
+    - Better fraud detection
+    
+    ## Authentication
+    All API requests require authentication using API keys. Include your API key in the Authorization header.
+    
+    ## Base URL
+    - **Production**: `https://api.iyzico.com/v1/`
+    - **Sandbox**: `https://sandbox-api.iyzico.com/v1/`
+    - **Staging**: `https://staging-api.iyzico.com/v1/`
+    
+    ## Rate Limits
+    - Standard: 2000 requests per minute per API key
+    - Burst: Up to 200 requests per second
+    
+  version: 1.0.0-beta1.1
+  contact:
+    name: iyzico API Support
+    email: api@iyzico.com
+    url: https://www.iyzico.com
+  license:
+    name: Proprietary
+    url: https://www.iyzico.com/terms
+
+servers:
+  - url: https://api.iyzico.com/v1
+    description: Production server
+  - url: https://sandbox-api.iyzico.com/v1
+    description: Sandbox server (for testing)
+  - url: https://staging-api.iyzico.com/v1
+    description: Staging server (beta1.1)
+
+tags:
+  - name: Authentication
+    description: Payment authentication endpoints
+  - name: Authorization
+    description: Payment authorization endpoints
+  - name: Capture
+    description: Payment capture endpoints
+
+security:
+  - ApiKeyAuth: []
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: API Key authentication (Format: "Basic YOUR_API_KEY")
+  
+  schemas:
+    Error:
+      type: object
+      required:
+        - status
+        - errorCode
+        - errorMessage
+        - errorGroup
+      properties:
+        status:
+          type: string
+          example: failure
+        errorCode:
+          type: string
+          example: "5001"
+        errorMessage:
+          type: string
+          example: Invalid API key
+        errorGroup:
+          type: string
+          enum: [AUTHENTICATION, VALIDATION, PAYMENT, SYSTEM, BUSINESS]
+          example: AUTHENTICATION
+    
+    BrowserInfo:
+      type: object
+      required:
+        - acceptHeader
+        - language
+        - userAgent
+      properties:
+        acceptHeader:
+          type: string
+          example: "text/html,application/xhtml+xml"
+        language:
+          type: string
+          example: "tr-TR"
+        screenColorDepth:
+          type: integer
+          example: 24
+        screenHeight:
+          type: integer
+          example: 1080
+        screenWidth:
+          type: integer
+          example: 1920
+        timeZoneOffset:
+          type: integer
+          example: -180
+        userAgent:
+          type: string
+          example: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    
+    AdsInfo:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum: [WEB, MOBILE, API]
+          example: WEB
+        merchantId:
+          type: string
+          example: "MERCHANT_ID"
+        merchantName:
+          type: string
+          example: "Merchant Name"
+        campaignCode:
+          type: string
+          example: "CAMPAIGN_123"
+    
+    BillingInfo:
+      type: object
+      required:
+        - contactName
+        - city
+        - country
+        - address
+      properties:
+        contactName:
+          type: string
+          example: John Doe
+        city:
+          type: string
+          example: Istanbul
+        country:
+          type: string
+          example: Turkey
+        address:
+          type: string
+          example: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+        zipCode:
+          type: string
+          example: "34732"
+    
+    AuthenticationRequest:
+      type: object
+      required:
+        - amount
+        - currency
+        - browserInfo
+        - ads
+        - billingInfo
+      properties:
+        amount:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "100.00"
+          description: Payment amount
+        currency:
+          type: string
+          default: TRY
+          example: TRY
+          description: Currency code
+        browserInfo:
+          $ref: '#/components/schemas/BrowserInfo'
+        ads:
+          $ref: '#/components/schemas/AdsInfo'
+        billingInfo:
+          $ref: '#/components/schemas/BillingInfo'
+    
+    AuthenticationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failure]
+          example: success
+        transactionId:
+          type: string
+          example: "tx_1234567890abcdef"
+        fraudStatus:
+          type: integer
+          enum: [-1, 0, 1]
+          description: "-1 = Review, 0 = Rejected, 1 = Approved"
+          example: 1
+        amount:
+          type: string
+          example: "100.00"
+        currency:
+          type: string
+          example: TRY
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+    
+    AuthorizationRequest:
+      type: object
+      required:
+        - transactionId
+      properties:
+        transactionId:
+          type: string
+          example: "tx_1234567890abcdef"
+          description: Transaction ID from authentication response
+        callbackUrl:
+          type: string
+          format: uri
+          example: "https://www.merchant.com/callback"
+          description: Callback URL for challenge flow (optional)
+    
+    AuthorizationResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, challenge_required, failure]
+          example: success
+        transactionId:
+          type: string
+          example: "tx_1234567890abcdef"
+        authorizationStatus:
+          type: string
+          enum: [AUTHORIZED, PENDING, FAILED]
+          example: AUTHORIZED
+        chargeKey:
+          type: string
+          example: "chk_1234567890abcdef"
+          description: Charge key for capture operation
+        flow:
+          type: string
+          enum: [frictionless, challenge]
+          example: frictionless
+        challengeUrl:
+          type: string
+          format: uri
+          description: URL for 3DS challenge (if challenge_required)
+        htmlContent:
+          type: string
+          description: HTML content for challenge iframe (if challenge_required)
+        amount:
+          type: string
+          example: "100.00"
+        currency:
+          type: string
+          example: TRY
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+    
+    CaptureRequest:
+      type: object
+      required:
+        - chargeKey
+      properties:
+        chargeKey:
+          type: string
+          example: "chk_1234567890abcdef"
+          description: Charge key from authorization response
+        amount:
+          type: string
+          pattern: '^\d+\.\d{2}$'
+          example: "100.00"
+          description: Partial capture amount (optional, defaults to full amount)
+    
+    CaptureResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failure]
+          example: success
+        chargeKey:
+          type: string
+          example: "chk_1234567890abcdef"
+        captureStatus:
+          type: string
+          enum: [CAPTURED, FAILED]
+          example: CAPTURED
+        transactionId:
+          type: string
+          example: "tx_1234567890abcdef"
+        amount:
+          type: string
+          example: "100.00"
+        currency:
+          type: string
+          example: TRY
+        errorCode:
+          type: string
+        errorMessage:
+          type: string
+
+paths:
+  /payment/:
+    post:
+      tags:
+        - Authentication
+      summary: Authenticate a payment
+      description: |
+        Authenticate a payment by providing amount, currency, browser information, ads, and billing information.
+        
+        This is the first step in the payment flow. Returns a transactionId for authorization.
+      operationId: authenticatePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthenticationRequest'
+            examples:
+              basic:
+                summary: Basic authentication
+                value:
+                  amount: "100.00"
+                  currency: TRY
+                  browserInfo:
+                    acceptHeader: "text/html,application/xhtml+xml"
+                    language: "tr-TR"
+                    screenColorDepth: 24
+                    screenHeight: 1080
+                    screenWidth: 1920
+                    timeZoneOffset: -180
+                    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+                  ads:
+                    channel: WEB
+                    merchantId: "MERCHANT_ID"
+                    merchantName: "Merchant Name"
+                  billingInfo:
+                    contactName: John Doe
+                    city: Istanbul
+                    country: Turkey
+                    address: Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1
+                    zipCode: "34732"
+      responses:
+        '200':
+          description: Payment authenticated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthenticationResponse'
+              example:
+                status: success
+                transactionId: "tx_1234567890abcdef"
+                fraudStatus: 1
+                amount: "100.00"
+                currency: TRY
+        '400':
+          description: Bad request - Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized - Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too many requests - Rate limit exceeded
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /authorization/:
+    post:
+      tags:
+        - Authorization
+      summary: Authorize a payment
+      description: |
+        Authorize a payment using the transactionId from authentication.
+        
+        This step may trigger 3DS authentication (challenge flow) or complete automatically (frictionless flow).
+        Returns a chargeKey for capture operation.
+      operationId: authorizePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorizationRequest'
+            example:
+              transactionId: "tx_1234567890abcdef"
+              callbackUrl: "https://www.merchant.com/callback"
+      responses:
+        '200':
+          description: Payment authorized successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizationResponse'
+              examples:
+                frictionless:
+                  summary: Frictionless authorization
+                  value:
+                    status: success
+                    transactionId: "tx_1234567890abcdef"
+                    authorizationStatus: AUTHORIZED
+                    chargeKey: "chk_1234567890abcdef"
+                    flow: frictionless
+                    amount: "100.00"
+                    currency: TRY
+                challenge:
+                  summary: Challenge required
+                  value:
+                    status: challenge_required
+                    transactionId: "tx_1234567890abcdef"
+                    challengeUrl: "https://3dsecure.iyzico.com/challenge/tx_1234567890abcdef"
+                    htmlContent: "<iframe src='https://3dsecure.iyzico.com/challenge/...'></iframe>"
+        '400':
+          description: Bad request - Invalid transactionId
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  
+  /capture:
+    post:
+      tags:
+        - Capture
+      summary: Capture an authorized payment
+      description: |
+        Capture an authorized payment using the chargeKey from authorization.
+        
+        Can be full capture (default) or partial capture (if amount is specified).
+        This is the final step to charge the payment.
+      operationId: capturePayment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CaptureRequest'
+            examples:
+              full:
+                summary: Full capture
+                value:
+                  chargeKey: "chk_1234567890abcdef"
+              partial:
+                summary: Partial capture
+                value:
+                  chargeKey: "chk_1234567890abcdef"
+                  amount: "50.00"
+      responses:
+        '200':
+          description: Payment captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CaptureResponse'
+              example:
+                status: success
+                chargeKey: "chk_1234567890abcdef"
+                captureStatus: CAPTURED
+                transactionId: "tx_1234567890abcdef"
+                amount: "100.00"
+                currency: TRY
+        '400':
+          description: Bad request - Invalid chargeKey or amount
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Charge not found or already captured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict - Capture failed (authorization expired, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'

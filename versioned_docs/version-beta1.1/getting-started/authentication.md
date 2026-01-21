@@ -1,6 +1,6 @@
-# Authentication
+# Authentication - beta1.1
 
-All API requests require authentication using API keys.
+All API requests require authentication using API keys. This version includes enhanced security features.
 
 ## API Keys
 
@@ -26,6 +26,12 @@ Or in JSON format:
 }
 ```
 
+## New in beta1.1
+
+- Enhanced token-based authentication
+- OAuth 2.0 support (coming soon)
+- Improved key rotation mechanisms
+
 ## Security Best Practices
 
 - Never expose your secret key in client-side code
@@ -36,7 +42,7 @@ Or in JSON format:
 ## Example Request
 
 ```bash
-curl -X POST https://api.iyzibv.com/v1/ \
+curl -X POST https://api.iyzico.com/v2/payments \
   -H "Authorization: Basic YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{

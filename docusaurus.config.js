@@ -36,6 +36,19 @@ const config = {
           sidebarPath: require.resolve('./sidebars.js'),
           // Please change this to your repo.
           editUrl: 'https://github.com/iyzico/docs/tree/main/',
+          includeCurrentVersion: true,
+          lastVersion: 'beta1.0',
+          versions: {
+            current: {
+              label: 'beta1.0',
+            },
+            'beta1.1': {
+              label: 'beta1.1',
+            },
+            'beta1.2': {
+              label: 'beta1.2',
+            },
+          },
         },
         blog: {
           showReadingTime: true,
@@ -66,6 +79,11 @@ const config = {
             sidebarId: 'tutorialSidebar',
             position: 'left',
             label: 'Docs',
+          },
+          {
+            type: 'docsVersionDropdown',
+            position: 'right',
+            dropdownActiveClassDisabled: true,
           },
           {
             href: 'https://github.com/iyzico',

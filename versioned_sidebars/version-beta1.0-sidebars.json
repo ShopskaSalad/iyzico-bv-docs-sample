@@ -1,0 +1,47 @@
+{
+  "tutorialSidebar": [
+    "intro",
+    {
+      "type": "category",
+      "label": "GETTING STARTED",
+      "items": [
+        "getting-started/welcome",
+        "getting-started/preliminaries",
+        "getting-started/authentication",
+        "getting-started/idempotency",
+        "getting-started/baseurl-switch",
+        "getting-started/limiters"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "PAYMENT METHODS",
+      "items": [
+        "payment-methods/non3ds",
+        "payment-methods/auth-capture",
+        "payment-methods/card-encryption",
+        "payment-methods/3ds-secure"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "ADVANCED",
+      "items": [
+        "advanced/cancel-refund-reversal",
+        "advanced/webhook",
+        "advanced/sftp",
+        "advanced/fraud",
+        "advanced/bin-installment-check"
+      ]
+    },
+    {
+      "type": "category",
+      "label": "ADDITIONAL",
+      "items": [
+        "additional/error-codes",
+        "additional/test-cards",
+        "additional/openapi-spec"
+      ]
+    }
+  ]
+}
